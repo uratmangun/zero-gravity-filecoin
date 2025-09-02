@@ -175,11 +175,22 @@ jobs:
         run: |
           echo "🚢 Deploying temporary build to Vercel for screenshot generation..."
           
-          # Deploy to Vercel and capture the deployment URL
+          # Deploy to Vercel and capture the deployment URL from stdout
           TEMP_DEPLOYMENT_URL=$(vercel deploy \
             --token="$VERCEL_TOKEN" \
             --yes \
-            ./)
+            ./ 2>/dev/null)
+          
+          # Verify we got a valid URL
+          if [[ -z "$TEMP_DEPLOYMENT_URL" ]]; then
+            echo "❌ Failed to capture temporary deployment URL"
+            exit 1
+          fi
+          
+          # Ensure the URL is properly formatted
+          if [[ ! "$TEMP_DEPLOYMENT_URL" =~ ^https:// ]]; then
+            TEMP_DEPLOYMENT_URL="https://$TEMP_DEPLOYMENT_URL"
+          fi
           
           echo "✅ Temporary deployment URL: $TEMP_DEPLOYMENT_URL"
           
@@ -279,12 +290,43 @@ jobs:
           FLUX_GENERATION_DELAY: ${{ secrets.FLUX_GENERATION_DELAY }}
         run: |
           echo "Deploying to Vercel Production..."
-          PRODUCTION_URL=$(vercel deploy --prod \
+          
+          # Deploy to production and capture deployment URL from stdout
+          DEPLOYMENT_URL=$(vercel deploy --prod \
             --token="$VERCEL_TOKEN" \
             --yes \
-            ./)
+            ./ 2>/dev/null)
           
-          echo "✅ Production deployment URL: $PRODUCTION_URL"
+          # Verify we got a valid deployment URL
+          if [[ -z "$DEPLOYMENT_URL" ]]; then
+            echo "❌ Failed to capture deployment URL"
+            exit 1
+          fi
+          
+          # The deployment URL requires authentication, so we get the actual domain via API
+          PROJECT_ID="${{ steps.generate-vercel-project.outputs.project_id }}"
+          
+          # Get the actual production domain from Vercel API
+          echo "🔍 Fetching actual production domain from Vercel API..."
+          DOMAINS_RESPONSE=$(curl -s -X GET \
+            "https://api.vercel.com/v9/projects/${PROJECT_ID}/domains?production=true" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H "Content-Type: application/json")
+          
+          # Extract the production domain name (the truncated one)
+          PRODUCTION_DOMAIN=$(echo "$DOMAINS_RESPONSE" | jq -r '.domains[0].name' 2>/dev/null || echo "")
+          
+          if [[ -z "$PRODUCTION_DOMAIN" || "$PRODUCTION_DOMAIN" == "null" ]]; then
+            echo "⚠️ Could not fetch production domain via API, constructing from project name..."
+            PROJECT_NAME="${{ steps.generate-vercel-project.outputs.project_name }}"
+            PRODUCTION_URL="https://${PROJECT_NAME}.vercel.app"
+          else
+            PRODUCTION_URL="https://${PRODUCTION_DOMAIN}"
+            echo "✅ Retrieved actual production domain: $PRODUCTION_DOMAIN"
+          fi
+          
+          echo "📦 Deployment URL (requires auth): $DEPLOYMENT_URL"
+          echo "✅ Production domain URL: $PRODUCTION_URL"
           echo "production_url=$PRODUCTION_URL" >> $GITHUB_OUTPUT
 
       - name: "🏷️ Update repository homepage URL"
@@ -350,11 +392,25 @@ jobs:
           FLUX_GENERATION_DELAY: ${{ secrets.FLUX_GENERATION_DELAY }}
         run: |
           echo "Deploying to Vercel Preview..."
+          
+          # Deploy to preview and capture URL from stdout
           DEPLOYMENT_URL=$(vercel deploy \
             --token="$VERCEL_TOKEN" \
             --yes \
-            ./)
+            ./ 2>/dev/null)
           
+          # Verify we got a valid URL
+          if [[ -z "$DEPLOYMENT_URL" ]]; then
+            echo "❌ Failed to capture preview deployment URL"
+            exit 1
+          fi
+          
+          # Ensure the URL is properly formatted
+          if [[ ! "$DEPLOYMENT_URL" =~ ^https:// ]]; then
+            DEPLOYMENT_URL="https://$DEPLOYMENT_URL"
+          fi
+          
+          echo "✅ Preview deployment URL: $DEPLOYMENT_URL"
           echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
 
       - name: "💬 Comment deployment URL"
