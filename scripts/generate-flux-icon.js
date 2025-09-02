@@ -353,7 +353,7 @@ async function main() {
 
     console.log(`\n📝 Model: ${FLUX_MODEL.displayName}`);
 
-    const MAX_RETRIES = 5;
+    const MAX_RETRIES = 3;
     let lastError = null;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
