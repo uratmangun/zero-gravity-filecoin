@@ -194,6 +194,26 @@ jobs:
           
           echo "✅ Temporary deployment URL: $TEMP_DEPLOYMENT_URL"
           
+          # Get the actual production domain from Vercel API for use in subsequent steps
+          PROJECT_ID="${{ steps.generate-vercel-project.outputs.project_id }}"
+          echo "🔍 Fetching production domain for environment variables..."
+          DOMAINS_RESPONSE=$(curl -s -X GET \
+            "https://api.vercel.com/v9/projects/${PROJECT_ID}/domains?production=true" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H "Content-Type: application/json")
+          
+          # Extract the production domain name (the truncated one)
+          PRODUCTION_DOMAIN=$(echo "$DOMAINS_RESPONSE" | jq -r '.domains[0].name' 2>/dev/null || echo "")
+          
+          if [[ -z "$PRODUCTION_DOMAIN" || "$PRODUCTION_DOMAIN" == "null" ]]; then
+            echo "⚠️ Could not fetch production domain via API, using project name..."
+            PROJECT_NAME="${{ steps.generate-vercel-project.outputs.project_name }}"
+            PRODUCTION_DOMAIN="${PROJECT_NAME}.vercel.app"
+          fi
+          
+          echo "✅ Production domain for env vars: $PRODUCTION_DOMAIN"
+          echo "production_domain=$PRODUCTION_DOMAIN" >> $GITHUB_OUTPUT
+          
           # Extract the deployment ID from the URL for deletion later
           # Vercel URLs are in format: https://[project]-[deploymentid].vercel.app
           DEPLOYMENT_ID=$(echo "$TEMP_DEPLOYMENT_URL" | sed -n 's/.*-\([a-z0-9]\{9\}\)\.vercel\.app.*/\1/p')
@@ -212,7 +232,7 @@ jobs:
           echo "📦 Deployment ID saved for cleanup: $DEPLOYMENT_ID"
       - name: "🔑 Generate Farcaster account association"
         env:
-            NEXT_PUBLIC_APP_DOMAIN: ${{ steps.generate-vercel-project.outputs.project_name }}.vercel.app
+            NEXT_PUBLIC_APP_DOMAIN: ${{ steps.deploy-temp.outputs.production_domain }}
             FARCASTER_FID: ${{ secrets.FARCASTER_FID }}
             FARCASTER_CUSTODY_ADDRESS: ${{ secrets.FARCASTER_CUSTODY_ADDRESS }}
             FARCASTER_CUSTODY_PRIVATE_KEY: ${{ secrets.FARCASTER_CUSTODY_PRIVATE_KEY }}
@@ -222,28 +242,31 @@ jobs:
       - name: "🎨 Generate AI icon"
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          BROWSERLESS_API_URL: ${{ secrets.BROWSERLESS_API_URL }}
         run: |
+          # Export domain URLs for icon generation
+          PRODUCTION_DOMAIN="${{ steps.deploy-temp.outputs.production_domain }}"
+          export SCREENSHOT_URL="https://${PRODUCTION_DOMAIN}"
+          export NEXT_PUBLIC_APP_DOMAIN="$PRODUCTION_DOMAIN"
+          
           echo "🎨 Generating AI icon using Flux API"
+          echo "Using production domain: $PRODUCTION_DOMAIN"
           node scripts/generate-icon-with-fallback.js
 
       - name: "📸 Generate screenshots"
         env:
           BROWSERLESS_API_URL: ${{ secrets.BROWSERLESS_API_URL }}
         run: |
-          # Extract clean project name from deployment URL
-          DEPLOYMENT_URL="${{ steps.deploy-temp.outputs.deployment_url }}"
-          BASE_PROJECT_NAME=$(echo "$DEPLOYMENT_URL" | sed 's|https://||' | sed 's|\.vercel\.app.*||' | sed 's|-[a-z0-9]*$||')
+          # Use the actual production domain from the temporary deployment step
+          PRODUCTION_DOMAIN="${{ steps.deploy-temp.outputs.production_domain }}"
+          PRODUCTION_URL="https://${PRODUCTION_DOMAIN}"
           
-          # Use clean domain format
-          CLEAN_DOMAIN="${BASE_PROJECT_NAME}.vercel.app"
-          CLEAN_URL="https://${CLEAN_DOMAIN}"
-          
-          echo "📸 Generating screenshots from deployment: $CLEAN_DOMAIN"
-          echo "Using clean URL: $CLEAN_URL"
+          echo "📸 Generating screenshots from production domain: $PRODUCTION_DOMAIN"
+          echo "Using production URL: $PRODUCTION_URL"
           
           # Export for the script
-          export SCREENSHOT_URL="$CLEAN_URL"
-          export NEXT_PUBLIC_APP_DOMAIN="$CLEAN_DOMAIN"
+          export SCREENSHOT_URL="$PRODUCTION_URL"
+          export NEXT_PUBLIC_APP_DOMAIN="$PRODUCTION_DOMAIN"
           
           node scripts/generate-screenshots.js
 
@@ -253,7 +276,7 @@ jobs:
           NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: 1
           NODE_OPTIONS: "--max-old-space-size=4096"
-          NEXT_PUBLIC_APP_DOMAIN: https://${{ steps.generate-vercel-project.outputs.project_name }}.vercel.app
+          NEXT_PUBLIC_APP_DOMAIN: https://${{ steps.deploy-temp.outputs.production_domain }}
           # Pass all Farcaster and API configuration for build-time generation
           FARCASTER_FID: ${{ secrets.FARCASTER_FID }}
           FARCASTER_CUSTODY_ADDRESS: ${{ secrets.FARCASTER_CUSTODY_ADDRESS }}
