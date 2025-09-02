@@ -258,6 +258,7 @@ jobs:
 
       - name: "🚀 Deploy to Vercel (Production)"
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        id: deploy-production
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           # Farcaster Configuration
@@ -278,10 +279,13 @@ jobs:
           FLUX_GENERATION_DELAY: ${{ secrets.FLUX_GENERATION_DELAY }}
         run: |
           echo "Deploying to Vercel Production..."
-          vercel deploy --prod \
+          PRODUCTION_URL=$(vercel deploy --prod \
             --token="$VERCEL_TOKEN" \
             --yes \
-            ./
+            ./)
+          
+          echo "✅ Production deployment URL: $PRODUCTION_URL"
+          echo "production_url=$PRODUCTION_URL" >> $GITHUB_OUTPUT
 
       - name: "🏷️ Update repository homepage URL"
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
@@ -289,16 +293,15 @@ jobs:
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
-            const projectName = '${{ steps.generate-vercel-project.outputs.project_name }}';
-            const homepageUrl = `https://${projectName}.vercel.app`;
+            const actualProductionUrl = '${{ steps.deploy-production.outputs.production_url }}';
             
-            console.log(`Updating repository homepage to: ${homepageUrl}`);
+            console.log(`Updating repository homepage to: ${actualProductionUrl}`);
             
             try {
               await github.rest.repos.update({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                homepage: homepageUrl
+                homepage: actualProductionUrl
               });
               console.log('Successfully updated repository homepage URL');
             } catch (error) {
@@ -311,16 +314,18 @@ jobs:
         env:
           FARCASTER_BEARER_TOKEN: ${{ secrets.FARCASTER_BEARER_TOKEN }}
         run: |
-          PROJECT_NAME="${{ steps.generate-vercel-project.outputs.project_name }}"
+          PRODUCTION_URL="${{ steps.deploy-production.outputs.production_url }}"
+          # Extract domain from full URL for scripts that expect domain only
+          DOMAIN=$(echo "$PRODUCTION_URL" | sed 's|https://||' | sed 's|http://||')
           
-          echo "❤️ Debugging domain manifest for $PROJECT_NAME.vercel.app"
-          node scripts/debug-domain-manifest.js "$PROJECT_NAME.vercel.app"
+          echo "❤️ Debugging domain manifest for $DOMAIN"
+          node scripts/debug-domain-manifest.js "$DOMAIN"
 
-          echo "❤️ Favoriting frame for $PROJECT_NAME.vercel.app"
-          node scripts/favorite-frame.js "$PROJECT_NAME.vercel.app"
+          echo "❤️ Favoriting frame for $DOMAIN" 
+          node scripts/favorite-frame.js "$DOMAIN"
           
           echo "🚀 Posting to Farcaster about the new deployment"
-          node scripts/post-to-farcaster.js "New version deployed at $PROJECT_NAME.vercel.app" "https://$PROJECT_NAME.vercel.app"
+          node scripts/post-to-farcaster.js "New version deployed at $DOMAIN" "$PRODUCTION_URL"
 
       - name: "🔍 Deploy to Vercel (Preview)"
         if: github.event_name == 'pull_request'
