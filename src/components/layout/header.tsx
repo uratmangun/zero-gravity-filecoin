@@ -29,7 +29,7 @@ export function Header() {
                 d="M13 10V3L4 14h7v7l9-11h-7z"
               />
             </svg>
-            <span className="font-bold text-xl">Farcaster Mini App</span>
+            <span className="font-bold text-xl">chat using 0g blockchain+filecoin</span>
           </Link>
           
           <nav className="hidden md:flex items-center gap-6">
