@@ -402,7 +402,7 @@ async function main() {
         
           if (error.message.includes("429") || error.message.includes("rate limit")) {
             waitTime = 105000; // Wait 105 seconds for rate limit errors
-            console.error("⏰ Rate Limit: Waiting 10 seconds before retry...");
+            console.error("⏰ Rate Limit: Waiting 105 seconds before retry...");
           } else {
             console.error(`⏳ Waiting ${waitTime/1000} seconds before retry...`);
           }
