@@ -1,0 +1,32 @@
+PROJECT NAME
+Zero Gravity Filecoin
+
+PROJECT DESCRIPTION
+A decentralized AI chat application that combines the power of zero-gravity blockchain computing with secure Filecoin distributed storage for a truly sovereignty-preserving chat experience.
+
+TAGLINE
+zero,gravity,filecoin
+
+WHAT IT DOES
+Zero Gravity Filecoin is a decentralized chat platform that powers user-controlled AI conversations while storing all data on Filecoin's distributed network, ensuring users maintain complete sovereignty over their information and eliminating the risks associated with centralized platforms.
+
+THE PROBLEM IT SOLVES
+Centralized chat platforms collect user data for profit, exposing users to privacy risks, data breaches, and surveillance. Zero Gravity Filecoin solves this by combining blockchain for computation with Filecoin for storage, providing encrypted, decentralized chat with user-controlled data storage.
+
+CHALLENGES I RAN INTO
+Integrating multiple blockchain APIs including Farcaster mini app SDK, Filecoin storage protocols, and 0G processing nodes required extensive research into decentralized systems. Managing state synchronization between edge deployments and handling encryption for data at rest and in transit proved challenging.
+
+TECHNOLOGIES I USED
+Next.js, React, TypeScript, Tailwind CSS, Cloudflare Pages, Open Next.js Cloudflare, Farcaster Mini App SDK, Neynar SDK, Together AI, Google Generative AI, ethers.js, Sharp image processing, and Filecoin decentralized storage.
+
+HOW WE BUILT IT
+Developed using Next.js with Cloudflare optimization for edge computing performance. Integrated Farcaster mini app capabilities for social interactions, implemented secure Filecoin storage integration for persistent data, connected to 0G blockchain for decentralized AI processing, and deployed seamlessly using GitHub Actions CI/CD pipelines.
+
+WHAT WE LEARNED
+Learned practical decentralized application development, including blockchain integration, distributed storage implementation, edge computing optimization, secure encryption methods, and managing complex API relationships in decentralized ecosystems.
+
+WHAT'S NEXT FOR
+Future enhancements include multi-network integration supporting additional blockchains, multimedia file sharing with Filecoin storage, peer-to-peer messaging features, local AI model deployment, and expanding to mobile platforms with enhanced offline capabilities.
+
+UPDATE OF THIS PROJECT TODAY
+The project is in active development with core chat functionality completed and Filecoin storage integration in progress. CI/CD pipeline is set up for automated deployments to Cloudflare Pages, with performance optimizations ongoing.
