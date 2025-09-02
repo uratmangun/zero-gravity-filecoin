@@ -16,6 +16,16 @@ export function FarcasterProvider({ children }: { children: React.ReactNode }) {
   const [isInMiniApp, setIsInMiniApp] = useState(false);
 
   useEffect(() => {
+    // Check for skip parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldSkip = urlParams.get('skip') === 'true';
+
+    if (shouldSkip) {
+      console.log('Skipping Farcaster initialization due to skip=true parameter');
+      setIsReady(true);
+      return;
+    }
+
     const initializeFarcaster = async () => {
       try {
         // Check if we're in a Farcaster mini app context
@@ -53,6 +63,12 @@ export function FarcasterProvider({ children }: { children: React.ReactNode }) {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading Farcaster Mini App...</p>
+          <button 
+            onClick={() => setIsReady(true)}
+            className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Skip Loading
+          </button>
         </div>
       </div>
     );
